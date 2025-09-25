@@ -35,7 +35,7 @@ load(system.file("extdata", "example.RData", package = "metanorm"))
 
 
 The example dataset contains three objects:
-- *rawdata*, a numerical matrix containing the unnormalized data
+- *rawdata*, a numerical matrix containing the unnormalized data (rows = compounds, columns = samples)
 - *batch*, a vector containing for each sample run the batch to which it belongs
 - *metanorm.qc*, a vector containing for each sample run whether it is a QC or another type of sample (not a QC)
 
