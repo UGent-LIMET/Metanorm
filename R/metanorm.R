@@ -619,13 +619,10 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
     stop(paste0("unsupported method (", model, ")"))
   }
 
-
+  # if requested, generate plots
   if(!is.null(plotdir)){
 
     batchlabels <- seq(length(levels(dat$batch)))
-    if(length(batchlabels < 6)){
-      batchlabels <- 15:(15+length(batchlabels)-1)
-    }
     if(plottype == "pdf"){
       dat$pred <- predVals
       preNorm <- ggplot(dat, aes(x = .data$x,
