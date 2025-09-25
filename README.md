@@ -27,7 +27,7 @@ library(metanorm)
 An example dataset can be loaded from the package:
 ```r
 load(system.file("extdata", "example.RData", package = "metanorm"))
-```r
+```
 
 
 The example dataset contains three objects:
@@ -67,9 +67,9 @@ plotPCA(normdat[1:5,], type = batch)
 ![PC score plots before and after tGAM normalization](man/figures/PCprepost.png)
 
 
-Individual compound pre- vs. post-normalization intensity vs. order plots can be retrieved from the *plotdir* directory. These allow finegrained assessment of normalization performance and it is highly recommended to look at a decent number of these plots to judge normalization performance.
+Individual compound pre- vs. post-normalization intensity vs. order plots can be retrieved from the *plotdir* directory. These allow finegrained assessment of normalization performance. It is highly recommended to look at a decent number of these plots to judge normalization performance.
 
-To see why this is important, you can now normalize with QC-RLSC, using, traditionally, QC samples for normalization (*QConly* argument):
+To see why this is important, you can now normalize with QC-RLSC, using, as prescribed, QC samples for normalization (*QConly* argument):
 
 ```r
 # normalize the first 5 compounds in the example dataset, this time using QC-RLSC
@@ -77,7 +77,7 @@ normdat2 <- metanorm(rawdata[1:5,],       # numerical data matrix to normalize
                      model = "QC-RLSC",   # use QC-RLSC
                      type = metanorm.qc,  # vector with sample types, i.e. "QC"
                                           #   and other sample types
-                     QConly = TRUE,       # QC-RLSC typically used with QCs only
+                     QConly = TRUE,       # QC-RLSC as presecribed uses QC sampls only
                      batch = batch,       # normalize by batch
                      plotdir = "~/Documents/metanormExample2/")  # generate plots for
                                                                #   diagnostics
