@@ -27,13 +27,22 @@ library(metanorm)
 An example dataset can be loaded from the package:
 ```r
 load(system.file("extdata", "example.RData", package = "metanorm"))
-```
+```r
 
 
 The example dataset contains three objects:
 - *rawdata*, a numerical matrix containing the unnormalized data
 - *batch*, a vector containing for each sample run the batch to which it belongs
 - *metanorm.qc*, a vector containing for each sample run whether it is a QC or another type of sample (not a QC)
+
+```r
+> rawdata[1, 1:20]
+ [1] 16.16302 16.41937 16.34396 16.50563 16.69834 16.59836 16.61340 16.60563 16.59414 16.64206 16.59123 16.53166 16.66316 16.67129 16.69392 16.78451 16.78775 16.72069 16.73120 16.76442
+> batch[1:20]
+ [1] "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1" "batch1"
+> metanorm.qc[1:20]
+ [1] "QC"     "QC"     "sample" "sample" "sample" "sample" "sample" "sample" "sample" "sample" "sample" "sample" "QC"     "sample" "sample" "sample" "sample" "sample" "sample" "sample"
+```
 
 Normalizing the data is achieved by calling the *metanorm* function.
 ```r
@@ -54,6 +63,9 @@ We can generate a PC score plot to see whether batch effects have diminished:
 plotPCA(rawdata[1:5,], type = batch)
 plotPCA(normdat[1:5,], type = batch)
 ```
+
+![PC score plots before and after tGAM normalization](man/figures/PCprepost.png)
+
 
 Individual compound pre- vs. post-normalization intensity vs. order plots can be retrieved from the *plotdir* directory. These allow finegrained assessment of normalization performance and it is highly recommended to look at a decent number of these plots to judge normalization performance.
 
