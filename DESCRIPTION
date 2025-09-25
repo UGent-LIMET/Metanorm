@@ -1,0 +1,30 @@
+Package: metanorm
+Type: Package
+Title: Quality Control And Sample-Based Normalization of Metabolomics Data
+Version: 0.9.0
+Author: Matthijs Vynck
+Maintainer: Matthijs Vynck <matthijs.vynck@ugent.be>
+Description: metanorm provides implementations of robust Gaussian and scaled-t
+    generalized additive models for normalization of metabolomics data. Such
+    normalization is typically done using quality control samples, but this
+    implementation supports also sample-based normalization, and different
+    weightings of quality control and samples can be used. Further, metanorm
+    includes vanilla implementations of QC-RLSC, QC-RSC, and a robustified
+    implementation of QC-RLSC. Normalization is done on a compound-by-compound
+    basis, and parallelized normalization default.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
+Imports:
+    ggplot2,
+    changepoint,
+    mgcv,
+    fANCOVA,
+    pbapply,
+    parallel,
+    rlang,
+    cowplot,
+    grDevices,
+    methods,
+    callr
