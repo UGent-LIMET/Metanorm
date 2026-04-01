@@ -14,10 +14,10 @@ https://cloud.r-project.org/index.html
 The package can be installed directly from R as follows:
 
 ```r
-if (!require("devtools", quietly = TRUE))
-    install.packages("devtools")
+if (!require("pak", quietly = TRUE))
+    install.packages("pak")
 
-devtools::install_github("UGent-LIMET/Metanorm")
+pak::pak("UGent-LIMET/Metanorm")
 ```
 
 ## Example usage of the R package
