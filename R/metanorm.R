@@ -898,7 +898,7 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
     }
   }
 
-  cl <- makeCluster(ncpus)
+  cl <- parallel::makeCluster(ncpus)
 
 
   if(pb){
@@ -928,27 +928,43 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
     model = model, k = k, cv = cv, plottype = plottype, plotdir = plotdir)
 
   } else {
-    result <- clusterApplyLB(cl, seq_len(nrow(mat)),
-                             function(i, mat, order = order,
-                                        keepScale = keepScale, QConly = QConly,
-                                        QCcheck = QCcheck, QCcheckp = QCcheckp,
-                                        changepoints = changepoints, type = type,
-                                        batch = batch, batchwise = batchwise,
-                                        weights = weights,
-                                        model = model, k = k, cv = cv,
-                                        plottype = plottype, plotdir = plotdir) {
-      row <- unname(unlist(mat[i, ]))
-      metanormWorker(row,  order = order, keepScale = keepScale, QConly = QConly,
-                     QCcheck = QCcheck, QCcheckp = QCcheckp,
-                     changepoints = changepoints, type = type,
-                   batch = batch, batchwise = batchwise, weights = weights,
-                   model = model, k = k, cv = cv, plottype = plottype,
-                   plotdir = plotdir, i = i)
-    }, mat, order = order, keepScale = keepScale, QConly = QConly,
-    QCcheck = QCcheck, QCcheckp = QCcheckp, changepoints = changepoints,
-    type = type, batch = batch, batchwise = batchwise,
-    weights = weights, model = model, k = k, cv = cv, plottype = plottype, 
-    plotdir = plotdir)
+    parallel::clusterEvalQ(cl, library(metanorm))
+    parallel::clusterExport(cl, varlist = c(
+      "mat",
+      "order", "keepScale", "QConly",
+      "QCcheck", "QCcheckp",
+      "changepoints", "type",
+      "batch", "batchwise",
+      "weights", "model", "k", "cv",
+      "plottype", "plotdir"
+    ), envir = environment())
+    
+    result <- parallel::parLapplyLB(
+      cl,
+      seq_len(nrow(mat)),
+      function(i) {
+        row <- unname(unlist(mat[i, ]))
+        metanorm::metanormWorker(
+          row,
+          order = order,
+          keepScale = keepScale,
+          QConly = QConly,
+          QCcheck = QCcheck,
+          QCcheckp = QCcheckp,
+          changepoints = changepoints,
+          type = type,
+          batch = batch,
+          batchwise = batchwise,
+          weights = weights,
+          model = model,
+          k = k,
+          cv = cv,
+          plottype = plottype,
+          plotdir = plotdir,
+          i = i
+        )
+      }
+    )
   }
   stopCluster(cl)
   return(do.call(rbind, result))
