@@ -913,7 +913,7 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
                                                     batchwise = batchwise,
                                                     weights = weights,
                                                     model = model, k = k, cv = cv,
-                                                    plotyype = plottype, 
+                                                    plottype = plottype, 
                                                     plotdir = plotdir) {
       row <- unname(unlist(mat[i, ]))
       metanormWorker(row, order = order, keepScale = keepScale, QConly = QConly,
