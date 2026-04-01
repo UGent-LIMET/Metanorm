@@ -1,7 +1,7 @@
 Package: metanorm
 Type: Package
 Title: Quality Control And Sample-Based Normalization of Metabolomics Data
-Version: 0.9.0
+Version: 0.9.1
 Author: Matthijs Vynck
 Maintainer: Matthijs Vynck <matthijs.vynck@ugent.be>
 Description: metanorm provides implementations of robust Gaussian and scaled-t
