@@ -1,5 +1,5 @@
 # Metanorm <img src="man/figures/metanormSmall.png" width="150" height="174" align = right /> 
-Metanorm supports robust metabolomics data normalization across scales and experimental designs. The R package implements three robust normalization methods (tGAM, rGAM and rLOESS). tGAM is recommended due to its superior robustness, but rGAM and rLOESS are faster. We further recommend using both QC as well as biological samples for normalization, and to have metanorm check for discrepancies between QC and biological samples. The example usage below demonstrates this recommended approach.
+Metanorm supports robust metabolomics data normalization across scales and experimental designs. The R package implements three (new) robust normalization methods (tGAM, rGAM and rLOESS), alongside formerly proposed ones (QC-RLSC, QC-RSC). tGAM is recommended due to its superior robustness, but rGAM and rLOESS are faster. We further recommend using both QC as well as biological samples for normalization, and to have metanorm check for discrepancies between QC and biological samples. The example usage below demonstrates this recommended approach.
 
 **Detailed methodology**
 
