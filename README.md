@@ -1,5 +1,12 @@
-# Metanorm <img src="man/figures/metanormSmall.png" width="150" height="150" align = right /> 
+# Metanorm <img src="man/figures/metanormSmall.png" width="150" height="174" align = right /> 
 Metanorm supports robust metabolomics data normalization across scales and experimental designs. The R package implements three robust normalization methods (tGAM, rGAM and rLOESS). tGAM is recommended due to its superior robustness, but rGAM and rLOESS are faster. We further recommend using both QC as well as biological samples for normalization, and to have metanorm check for discrepancies between QC and biological samples. The example usage below demonstrates this recommended approach.
+
+**Detailed methodology**
+
+A detailed description and a comparative evaluation of Metanorm's capabilities are available here:
+
+Vynck, M., Vangeenderhuysen, P., De Paepe, E., Nawrot, T., Plekhova, V., Vanhaecke, L. Robust metabolomics data normalization across scales and experimental designs. 
+https://doi.org/10.1101/2025.09.30.679445 
 
 ## Troubleshooting
 
@@ -81,14 +88,14 @@ normdat2 <- metanorm(rawdata[1:5,],       # numerical data matrix to normalize
                      model = "QC-RLSC",   # use QC-RLSC
                      type = metanorm.qc,  # vector with sample types, i.e. "QC"
                                           #   and other sample types
-                     QConly = TRUE,       # QC-RLSC as presecribed uses QC sampls only
+                     QConly = TRUE,       # QC-RLSC as prescribed uses QC samples only
                      batch = batch,       # normalize by batch
                      plotdir = "~/Documents/metanormExample2/")  # generate plots for
-                                                               #   diagnostics
+                                                                 #   diagnostics
 
 # make a PC score plot of the data before and after normalization, label by batch
 plotPCA(rawdata[1:5,], type = batch)
 plotPCA(normdat2, type = batch)
 ```
 
-While no apparent batch effects remain in the PC score plot, you might want to check the pre- versus post-normalization plot number 4, for example! What does the signal drift look like in the biological samples?
+While no apparent batch effects remain in the PC score plot, you might want to check the pre- versus post-normalization plot number 4, for example! What does the signal drift look like in the biological (= non-QC) samples?
