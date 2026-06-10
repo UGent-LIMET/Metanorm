@@ -5,8 +5,11 @@ Metanorm supports robust metabolomics data normalization across scales and exper
 
 A detailed description and a comparative evaluation of Metanorm's capabilities are available here:
 
-Vynck, M., Vangeenderhuysen, P., De Paepe, E., Nawrot, T., Plekhova, V., Vanhaecke, L. Robust metabolomics data normalization across scales and experimental designs. 
-https://doi.org/10.1101/2025.09.30.679445 
+Vynck, M., Vangeenderhuysen, P., De Paepe, E., Nawrot, T., Plekhova, V., Vanhaecke, L. (2026). Robust metabolomics data normalization across scales and experimental designs. Analytical Chemistry.
+
+Published version (open access): https://doi.org/10.1021/acs.analchem.5c06841 
+
+Preprint biorXiv: https://doi.org/10.1101/2025.09.30.679445 
 
 ## Troubleshooting
 
