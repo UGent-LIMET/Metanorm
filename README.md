@@ -9,7 +9,7 @@ Vynck, M., Vangeenderhuysen, P., De Paepe, E., Nawrot, T., Plekhova, V., Vanhaec
 
 Published version (open access): https://doi.org/10.1021/acs.analchem.5c06841 
 
-Preprint biorXiv: https://doi.org/10.1101/2025.09.30.679445 
+Preprint bioRxiv: https://doi.org/10.1101/2025.09.30.679445 
 
 ## Troubleshooting
 
