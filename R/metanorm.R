@@ -178,7 +178,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           #   prevent overfitting
           k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
           if(k.batch > k) k.batch <- k
-          if(k.batch > nrow(batchDat)/2) k.batch <- nrow(batchDat)/2
+          if(k.batch > nrow(batchDat)/4) k.batch <- nrow(batchDat)/4
           
           # 0-3 non-missing observations in batch: nothing useful, return NAs 
           if(k.batch < 1){
@@ -214,7 +214,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                   # take into account that insufficient data may remain, so that
                   #   again k needs to be lowered
                   new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
-                  if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                  if(new.k > nrow(batchDat)/4) new.k <- nrow(batchDat)/4
                   
                   # 0-3 non-missing observations in batch: nothing useful, return NAs 
                   if(new.k < 1){
@@ -238,7 +238,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                 # take into account that insufficient data may remain, so that
                 #   again k needs to be lowered
                 new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
-                if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                if(new.k > nrow(batchDat)/4) new.k <- nrow(batchDat)/4
                 
                 # 0-3 non-missing observations in batch: nothing useful, return NAs 
                 if(new.k < 1){
@@ -411,7 +411,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           #   prevent overfitting
           k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
           if(k.batch > k) k.batch <- k
-          if(k.batch > nrow(batchDat)/2) k.batch <- nrow(batchDat)/2
+          if(k.batch > nrow(batchDat)/4) k.batch <- nrow(batchDat)/4
           
           # 0-3 non-missing observations in batch: nothing useful, return NAs 
           if(k.batch < 1){
@@ -449,7 +449,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                   # take into account that insufficient data may remain, so that
                   #   again k needs to be lowered
                   new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
-                  if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                  if(new.k > nrow(batchDat)/4) new.k <- nrow(batchDat)/4
                   
                   # 0-3 non-missing observations in batch: nothing useful, return NAs 
                   if(new.k < 1){
@@ -466,7 +466,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                 # take into account that insufficient data may remain, so that
                 #   again k needs to be lowered
                 new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
-                if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                if(new.k > nrow(batchDat)/4) new.k <- nrow(batchDat)/4
                 
                 # 0-3 non-missing observations in batch: nothing useful, return NAs 
                 if(new.k < 1){
@@ -873,9 +873,7 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
 #'   model convergence issues or overfitting.
 #' @param gam.frac (numeric) 0 < gam.frac <= 1. If not exceeding 'gam.k', the
 #'   fraction of samples to use as basis dimension. Lower values result in faster
-#'   analysis time. Note: in presence of batches, should be lower than one.
-#'   Default: 0.9. Note: most often use of this feature will require setting a
-#'   higher value for 'gam.k'.
+#'   analysis time. Note: should typically be much lower than one. Default: 0.2.
 #' @param pb (logical) Whether to display a progress bar. While allowing
 #'   progress tracking, there is no load balancing when set to TRUE, this often
 #'   results in significantly longer analysis times. Default: FALSE.
