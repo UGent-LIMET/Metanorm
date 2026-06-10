@@ -85,7 +85,10 @@ a scaled-t GAM; 'QC-RLSC', as in Dunn et al. (2011); 'QC-RSC', as in Kirwan
 et al. (2013); or 'rLOESS', a robustified version of QC-RLSC. Default: tGAM.}
 
 \item{gam.k}{(numeric) The maximum basis dimension to use when fitting GAMs.
-Lower values result in faster analysis time. Default 10.}
+Lower values result in faster analysis time. Default 10. Note: for datasets
+with small numbers of samples (per batch) or with many missing values, 
+Metanorm will automatically lower the number of basis dimensions to prevent 
+model convergence issues or overfitting.}
 
 \item{gam.frac}{(numeric) 0 < gam.frac <= 1. If not exceeding 'gam.k', the
 fraction of samples to use as basis dimension. Lower values result in faster

@@ -45,7 +45,8 @@
 #'   et al. (2013); or 'rLOESS', a robustified version of QC-RLSC. Default: tGAM.
 #' @param k (numeric) The maximum basis dimension to use when fitting GAMs.
 #'   Lower values result in faster analysis time. Calculated in the wrapper
-#'   function, as a function of two parameters.
+#'   function, as a function of two parameters. k is adjusted at different
+#'   stages to account for missing values, and to reduce chances of overfitting.
 #' @param cv (character) Type of cross-validation to use for QC-RLSC, QC-RSC and
 #'   rLOESS approaches. Either 'GCV' (faster) or 'LOOCV' (as suggested in the
 #'   original publications, but slower). Default: GCV.
@@ -122,14 +123,6 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
   }
   dat$batch <- as.factor(dat$batch)
 
-  # heuristic check for (too) many NAs, if needed, adjust k
-  #   could be improved, because we'll be fitting for batches, potentially
-  if(sum(is.na(dat$y)) > k*0.9 & model %in% c("tGAM", "rGAM")){
-    warning(paste0("Too many NAs, reduced basis dimension to k = ", k*0.9,
-                   " (for compound ", i, " only!)"))
-    k <- k*0.9
-  }
-
   # remove nonQC samples to speed up analysis in case of QConly
   if(QConly){
     datfit <- dat[type == "QC",]
@@ -143,6 +136,15 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
   #   and no length mismatches occur
   datfit <- datfit[complete.cases(datfit),]
   
+  # heuristic check for (too) many NAs, if needed, adjust k
+  if(((length(datfit$y) - 3) < k) & 
+     model %in% c("tGAM", "rGAM")
+     ){
+    k <- length(datfit$y) - 3
+    warning(paste0("Too many NAs, reduced basis dimension to k = ", k,
+                   " (for compound ", i, ")"))
+  }
+  
   ######################################################
   # Start of normalization section, different methods:
   # rGAM, tGAM, rLOESS, QC-RLSC, QC-RSC
@@ -151,9 +153,14 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
 
   if(model == "rGAM"){
     if(length(unique(batch)) > 1){
+      
+      # multiple batches, fit per batch
       if(batchwise){
         normVal <- numeric(length(dat$y))
         for(batchid in 1:length(levels(dat$batch))){
+          # reset the not.enough.data flag
+          not.enough.data <- FALSE
+          
           # fit the model on fitting data only (depends on QCOnly, see above)
           batchIds <- which(datfit$batch == levels(datfit$batch)[batchid])
           batchDat <- datfit[batchIds, ]
@@ -161,68 +168,116 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           allBatchIds <- which(dat$batch == levels(dat$batch)[batchid])
           allBatchDat <- dat[allBatchIds, ]
 
-          # fit/refit
-          rGAM <- mgcv::gam(y ~ s(x, k = k), data = batchDat,
-                            weights = batchDat$weights, method = "REML")
-          est.weights <- calcWeights(rGAM$residuals)
+          # adjust k.batch to account for missing values
+          #   i.e., the number of basis functions can be lowered if insufficient 
+          #   data is available for GAM fitting in the given batch
+          # remember: batchDat has no missing values, as only complete cases
+          #   are retained
+          # also, k.batch should be in proportion to the number of observations
+          #   heuristic, not more than half the number of observations, to 
+          #   prevent overfitting
+          k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
+          if(k.batch > k) k.batch <- k
+          if(k.batch > nrow(batchDat)/2) k.batch <- nrow(batchDat)/2
           
-          # weights may be mostly 0 for very messy data, causing the fit to fail,
-          #   use a try
-          try({
-            rGAM <- mgcv::gam(y ~ s(x, k = k), data = batchDat,
-                            method = "REML", weights = est.weights*batchDat$weights)
-          }, silent = TRUE)
-          
-          if(QCcheck & !QConly){
-            rGAM2 <- mgcv::gam(y ~ isQC + s(x, k = k, by = isQC), data = batchDat,
-                               weights = batchDat$weights, method = "REML")
-            est.weights <- calcWeights(rGAM2$residuals)
-            try({
-              rGAM2 <- mgcv::gam(y ~ isQC + s(x, k = k, by = isQC), data = batchDat,
-                               method = "REML", weights = est.weights*batchDat$weights)
-            }, silent = TRUE)
-            # if QCs differ significantly from samples, refit using samples only
-            # if NA (fitting issue), also refit using samples only
-            QCp <- anova(rGAM, rGAM2, test = "Chisq")$`Pr(>Chi)`[2]
-            if(!is.na(QCp)){
-              if(QCp < QCcheckp){
-                batchDat <- batchDat[batchDat$type != "QC",]
-                new.k <- ifelse(k > nrow(batchDat), nrow(batchDat), k)
-                rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                  weights = batchDat$weights, method = "REML")
-                est.weights <- calcWeights(rGAM$residuals)
-                
-                try({
-                  rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                    method = "REML", weights = est.weights*batchDat$weights)
-                }, silent = TRUE)  
-              }
-            } else {
-              batchDat <- batchDat[batchDat$type != "QC",]
-              new.k <- ifelse(k > nrow(batchDat), nrow(batchDat), k)
-              rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                weights = batchDat$weights, method = "REML")
-              est.weights <- calcWeights(rGAM$residuals)
-              try({
-                rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                  method = "REML", weights = est.weights*batchDat$weights)
-              }, silent = TRUE)
-            }
-          }
-
-          preds <- predict(rGAM, newdata = allBatchDat)
-          predVals[allBatchIds] <- preds
-
-          if(keepScale){
-            normVal[allBatchIds] <- allBatchDat$y  - preds
+          # 0-3 non-missing observations in batch: nothing useful, return NAs 
+          if(k.batch < 1){
+            not.enough.data <- TRUE
           } else {
-            normVal[allBatchIds] <- allBatchDat$y / preds
-          }
+            # fit/refit
+            rGAM <- mgcv::gam(y ~ s(x, k = k.batch), data = batchDat,
+                              weights = batchDat$weights, method = "REML")
+            est.weights <- calcWeights(rGAM$residuals)
+            
+            # weights may be mostly 0 for very messy data, causing the fit to fail,
+            #   use a try
+            try({
+              rGAM <- mgcv::gam(y ~ s(x, k = k.batch), data = batchDat,
+                                method = "REML", weights = est.weights*batchDat$weights)
+            }, silent = TRUE)
+            
+            if(QCcheck & !QConly){
+              rGAM2 <- mgcv::gam(y ~ isQC + s(x, k = k.batch, by = isQC), data = batchDat,
+                                 weights = batchDat$weights, method = "REML")
+              est.weights <- calcWeights(rGAM2$residuals)
+              try({
+                rGAM2 <- mgcv::gam(y ~ isQC + s(x, k = k.batch, by = isQC), data = batchDat,
+                                   method = "REML", weights = est.weights*batchDat$weights)
+              }, silent = TRUE)
+              # if QCs differ significantly from samples, refit using samples only
+              # if NA (fitting issue), also refit using samples only
+              QCp <- anova(rGAM, rGAM2, test = "Chisq")$`Pr(>Chi)`[2]
+              if(!is.na(QCp)){
+                if(QCp < QCcheckp){
+                  batchDat <- batchDat[batchDat$type != "QC",]
+                  
+                  # take into account that insufficient data may remain, so that
+                  #   again k needs to be lowered
+                  new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
+                  if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                  
+                  # 0-3 non-missing observations in batch: nothing useful, return NAs 
+                  if(new.k < 1){
+                    normVal[allBatchIds] <- NA
+                    not.enough.data <- TRUE
+                  } else {
+                    rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                      weights = batchDat$weights, method = "REML")
+                    est.weights <- calcWeights(rGAM$residuals)
+                    
+                    try({
+                      rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                        method = "REML", weights = est.weights*batchDat$weights)
+                    }, silent = TRUE)  
+                  }
 
+                }
+              } else {
+                batchDat <- batchDat[batchDat$type != "QC",]
+                
+                # take into account that insufficient data may remain, so that
+                #   again k needs to be lowered
+                new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
+                if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                
+                # 0-3 non-missing observations in batch: nothing useful, return NAs 
+                if(new.k < 1){
+                  not.enough.data <- TRUE
+                } else {
+                  rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                    weights = batchDat$weights, method = "REML")
+                  est.weights <- calcWeights(rGAM$residuals)
+                  try({
+                    rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                      method = "REML", weights = est.weights*batchDat$weights)
+                  }, silent = TRUE)
+                }
+              }
+            }
+            
+            # if enough data, predict and normalize
+            if(!not.enough.data){
+              preds <- predict(rGAM, newdata = allBatchDat)
+              predVals[allBatchIds] <- preds
+              
+              if(keepScale){
+                normVal[allBatchIds] <- allBatchDat$y  - preds
+              } else {
+                normVal[allBatchIds] <- allBatchDat$y / preds
+              }
+            # if not enough data, write NAs
+            } else {
+              predVals[allBatchIds] <- NA
+              normVal[allBatchIds] <- NA
+            }
+
+          }
         }
         if(keepScale){
           normVal <- normVal + mean(dat$y, na.rm = TRUE)
         }
+        
+      # multiple batches, single fit
       } else {
         rGAM <- mgcv::gam(y ~ batch + s(x, k = k, by = batch), data = datfit,
                           weights = datfit$weights, method = "REML")
@@ -271,6 +326,8 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           normVal <- dat$y/predVals
         }
       }
+      
+    # single batch
     } else {
       rGAM <- mgcv::gam(y ~ s(x, k = k), data = datfit,
                         weights = datfit$weights, method = "REML")
@@ -293,21 +350,27 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
         if(!is.na(QCp)){
           if(QCp < QCcheckp){
             datfit <- dat[dat$type != "QC",]
-            rGAM <- mgcv::gam(y ~ s(x, k = k), data = datfit,
+            new.k <- ifelse(k > nrow(datfit), nrow(datfit) - 3, k)
+            if(new.k > nrow(datfit)/2) new.k <- nrow(datfit)/2
+            
+            rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                               weights = datfit$weights, method = "REML")
             est.weights <- calcWeights(rGAM$residuals)
             try({
-              rGAM <- mgcv::gam(y ~ s(x, k = k), data = datfit,
+              rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                                 method = "REML", weights = est.weights*datfit$weights)
             }, silent = TRUE)
           }
         } else {
           datfit <- dat[dat$type != "QC",]
-          rGAM <- mgcv::gam(y ~ s(x, k = k), data = datfit,
+          new.k <- ifelse(k > nrow(datfit), nrow(datfit) - 3, k)
+          if(new.k > nrow(datfit)/2) new.k <- nrow(datfit)/2
+          
+          rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                             weights = datfit$weights, method = "REML")
           est.weights <- calcWeights(rGAM$residuals)
           try({
-            rGAM <- mgcv::gam(y ~ s(x, k = k), data = datfit,
+            rGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                               method = "REML", weights = est.weights*datfit$weights)
           }, silent = TRUE)
         }
@@ -323,7 +386,12 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
   } else if(model == "tGAM"){
     # multiple batches
     if(length(unique(batch)) > 1){
+      
+      # fit per batch
       if(batchwise){
+        # reset not.enough.data flag
+        not.enough.data <- FALSE
+        
         normVal <- numeric(length(dat$y))
         for(batchid in 1:length(levels(dat$batch))){
           # fit the model on fitting data only (depends on QCOnly, see above)
@@ -333,61 +401,106 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           allBatchIds <- which(dat$batch == levels(dat$batch)[batchid])
           allBatchDat <- dat[allBatchIds, ]
 
-          # fit/refit
-          tGAM <- mgcv::gam(y ~ s(x, k = k), data = batchDat,
-                            method = "REML", family=mgcv::scat(),
-                            weights = batchDat$weights)
-          if(QCcheck & !QConly){
-            # complex model rarely crashes R when few QCs/samples in a batch
-            #  circumvent this by calling an external R process within a try
-            #  if fails, fit to samples only to salvage
-            tGAMw <- mgcv::gam(y ~ s(x, k = k), data = batchDat,
-                              method = "REML", family=mgcv::scat())
-            tGAM2 <- NULL
-            tGAM2 <- tryCatch({
-              callr::r(function(batchDat, k) {
-                tryCatch({
-                  mgcv::gam(y ~ isQC + s(x, k = k, by = isQC),
-                            data = batchDat,
-                            method = "REML",
-                            family = mgcv::scat())
-                }, error = function(e) NULL)
-              }, args = list(batchDat = batchDat, k = k))
-            }, error = function(e) NULL)
-            if(is(tGAM2)[1] == "gam"){
-              QCp <- anova(tGAMw, tGAM2, test = "Chisq")$`Pr(>Chi)`[2]
-            }
-
-            if(!is.na(QCp)){
-              if(QCp < QCcheckp){
-                batchDat <- batchDat[batchDat$type != "QC",]
-                new.k <- ifelse(k > nrow(batchDat), nrow(batchDat), k)
-                tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                  method = "REML", family=mgcv::scat(),
-                                  weights = batchDat$weights)
+          # adjust k.batch to account for missing values
+          #   i.e., the number of basis functions can be lowered if insufficient 
+          #   data is available for GAM fitting in the given batch
+          # remember: batchDat has no missing values, as only complete cases
+          #   are retained
+          # also, k.batch should be in proportion to the number of observations
+          #   heuristic, not more than half the number of observations, to 
+          #   prevent overfitting
+          k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
+          if(k.batch > k) k.batch <- k
+          if(k.batch > nrow(batchDat)/2) k.batch <- nrow(batchDat)/2
+          
+          # 0-3 non-missing observations in batch: nothing useful, return NAs 
+          if(k.batch < 1){
+            not.enough.data <- TRUE
+          } else {          
+            # fit/refit
+            tGAM <- mgcv::gam(y ~ s(x, k = k.batch), data = batchDat,
+                              method = "REML", family=mgcv::scat(),
+                              weights = batchDat$weights)
+            if(QCcheck & !QConly){
+              # complex model rarely crashes R when few QCs/samples in a batch
+              #  circumvent this by calling an external R process within a try
+              #  if fails, fit to samples only to salvage
+              tGAMw <- mgcv::gam(y ~ s(x, k = k.batch), data = batchDat,
+                                 method = "REML", family=mgcv::scat())
+              tGAM2 <- NULL
+              tGAM2 <- tryCatch({
+                callr::r(function(batchDat, k.batch) {
+                  tryCatch({
+                    mgcv::gam(y ~ isQC + s(x, k = k.batch, by = isQC),
+                              data = batchDat,
+                              method = "REML",
+                              family = mgcv::scat())
+                  }, error = function(e) NULL)
+                }, args = list(batchDat = batchDat, k.batch = k.batch))
+              }, error = function(e) NULL)
+              if(is(tGAM2)[1] == "gam"){
+                QCp <- anova(tGAMw, tGAM2, test = "Chisq")$`Pr(>Chi)`[2]
               }
+              
+              if(!is.na(QCp)){
+                if(QCp < QCcheckp){
+                  batchDat <- batchDat[batchDat$type != "QC",]
+                  
+                  # take into account that insufficient data may remain, so that
+                  #   again k needs to be lowered
+                  new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
+                  if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                  
+                  # 0-3 non-missing observations in batch: nothing useful, return NAs 
+                  if(new.k < 1){
+                    normVal[allBatchIds] <- NA
+                  } else {
+                    tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                      method = "REML", family=mgcv::scat(),
+                                      weights = batchDat$weights)
+                  }
+                }
+              } else {
+                batchDat <- batchDat[batchDat$type != "QC",]
+                
+                # take into account that insufficient data may remain, so that
+                #   again k needs to be lowered
+                new.k <- ifelse(k.batch > (nrow(batchDat) - 3), nrow(batchDat) - 3, k.batch)
+                if(new.k > nrow(batchDat)/2) new.k <- nrow(batchDat)/2
+                
+                # 0-3 non-missing observations in batch: nothing useful, return NAs 
+                if(new.k < 1){
+                  not.enough.data <- TRUE
+                } else {
+                  tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
+                                    method = "REML", family=mgcv::scat(),
+                                    weights = batchDat$weights)
+                }
+              }
+            }
+            
+            # if enough data
+            if(!not.enough.data){
+              preds <- predict(tGAM, newdata = allBatchDat)
+              predVals[allBatchIds] <- preds
+              
+              if(keepScale){
+                normVal[allBatchIds] <- allBatchDat$y  - preds
+              } else {
+                normVal[allBatchIds] <- allBatchDat$y / preds
+              }
+            # if not enough data
             } else {
-              batchDat <- batchDat[batchDat$type != "QC",]
-              new.k <- ifelse(k > nrow(batchDat), nrow(batchDat), k)
-              tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = batchDat,
-                                method = "REML", family=mgcv::scat(),
-                                weights = batchDat$weights)
+              normVal[allBatchIds] <- NA
+              predVals[allBatchIds] <- NA
             }
           }
-
-          preds <- predict(tGAM, newdata = allBatchDat)
-          predVals[allBatchIds] <- preds
-
-          if(keepScale){
-            normVal[allBatchIds] <- allBatchDat$y  - preds
-          } else {
-            normVal[allBatchIds] <- allBatchDat$y / preds
-          }
-
         }
         if(keepScale){
           normVal <- normVal + mean(dat$y, na.rm = TRUE)
         }
+        
+      # cross-batch normalisation (one fit)
       } else {
         tGAM <- mgcv::gam(y ~ batch + s(x, k = k, by = batch), data = datfit,
                           method = "REML", family = mgcv::scat(),
@@ -442,7 +555,9 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
         if(!is.na(QCp)){
           if(QCp < QCcheckp){
             datfit <- dat[dat$type != "QC",]
-            new.k <- ifelse(k > nrow(datfit), nrow(datfit), k)
+            new.k <- ifelse(k > nrow(datfit), nrow(datfit) - 3, k)
+            if(new.k > nrow(datfit)/2) new.k <- nrow(datfit)/2
+            
             tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                               method = "REML", family=mgcv::scat(),
                               weights = datfit$weights)
@@ -450,6 +565,8 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
         } else {
           datfit <- dat[dat$type != "QC",]
           new.k <- ifelse(k > nrow(datfit), nrow(datfit), k)
+          if(new.k > nrow(datfit)/2) new.k <- nrow(datfit)/2
+          
           tGAM <- mgcv::gam(y ~ s(x, k = new.k), data = datfit,
                             method = "REML", family=mgcv::scat(),
                             weights = datfit$weights)
@@ -750,7 +867,10 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
 #'   a scaled-t GAM; 'QC-RLSC', as in Dunn et al. (2011); 'QC-RSC', as in Kirwan
 #'   et al. (2013); or 'rLOESS', a robustified version of QC-RLSC. Default: tGAM.
 #' @param gam.k (numeric) The maximum basis dimension to use when fitting GAMs.
-#'   Lower values result in faster analysis time. Default 10.
+#'   Lower values result in faster analysis time. Default 10. Note: for datasets
+#'   with small numbers of samples (per batch) or with many missing values, 
+#'   Metanorm will automatically lower the number of basis dimensions to prevent 
+#'   model convergence issues or overfitting.
 #' @param gam.frac (numeric) 0 < gam.frac <= 1. If not exceeding 'gam.k', the
 #'   fraction of samples to use as basis dimension. Lower values result in faster
 #'   analysis time. Note: in presence of batches, should be lower than one.
@@ -876,7 +996,7 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
   k <- min(ncol(mat)*gam.frac, gam.k)
 
   # check that k is not too large
-  if(QConly){
+  if(QConly & model %in% c("tGAM", "rGAM")){
     if(gam.k < ncol(mat)*gam.frac){
       if(sum(type == "QC") < (gam.k  + length(levels(batch)) - 1)){
         warning("gam.k and/or gam.frac may be too large, reduce in case of errors")
@@ -886,7 +1006,14 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
         warning("gam.k and/or gam.frac may be too large, reduce in case of errors")
       }
     }
-  } else {
+    counts.per.batch <- t(
+      rowsum(t(!is.na(mat[, type == "QC"])) * 1, group = batch[type == "QC"])
+    )
+    min.complete.cases <- apply(counts.per.batch, 1, min) - 3
+    if(sum(k>min.complete.cases) > 0){
+      warning("k too large for some features/batches, feature/batch-level auto-adjustment will occur")
+    }
+  } else if(model %in% c("tGAM", "rGAM")) {
     if(gam.k < ncol(mat)*gam.frac){
       if(ncol(mat) < (gam.k  + length(levels(batch)) - 1)){
         warning("gam.k and/or gam.frac may be too large, reduce in case of errors")
@@ -896,7 +1023,16 @@ metanorm <- function(mat, order = NULL, keepScale = TRUE,
         warning("gam.k and/or gam.frac may be too large, reduce in case of errors")
       }
     }
+    counts.per.batch <- t(
+      rowsum(t(!is.na(mat)) * 1, group = batch)
+    )
+    min.complete.cases <- apply(counts.per.batch, 1, min) - 3
+    if(sum(k>min.complete.cases) > 0){
+      warning("k too large for some features/batches, feature/batch-level auto-adjustment will occur")
+    }
   }
+
+  
 
   cl <- parallel::makeCluster(ncpus)
 

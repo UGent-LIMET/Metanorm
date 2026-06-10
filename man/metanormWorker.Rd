@@ -82,7 +82,8 @@ et al. (2013); or 'rLOESS', a robustified version of QC-RLSC. Default: tGAM.}
 
 \item{k}{(numeric) The maximum basis dimension to use when fitting GAMs.
 Lower values result in faster analysis time. Calculated in the wrapper
-function, as a function of two parameters.}
+function, as a function of two parameters. k is adjusted at different
+stages to account for missing values, and to reduce chances of overfitting.}
 
 \item{cv}{(character) Type of cross-validation to use for QC-RLSC, QC-RSC and
 rLOESS approaches. Either 'GCV' (faster) or 'LOOCV' (as suggested in the
