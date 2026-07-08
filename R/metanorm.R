@@ -254,24 +254,22 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                 }
               }
             }
-            
-            # if enough data, predict and normalize
-            if(!not.enough.data){
-              preds <- predict(rGAM, newdata = allBatchDat)
-              predVals[allBatchIds] <- preds
-              
-              if(keepScale){
-                normVal[allBatchIds] <- allBatchDat$y  - preds
-              } else {
-                normVal[allBatchIds] <- allBatchDat$y / preds
-              }
-            # if not enough data, write NAs
-            } else {
-              predVals[allBatchIds] <- NA
-              normVal[allBatchIds] <- NA
-            }
-
           }
+          # if enough data, predict and normalize
+          if(!not.enough.data){
+            preds <- predict(rGAM, newdata = allBatchDat)
+            predVals[allBatchIds] <- preds
+            
+            if(keepScale){
+              normVal[allBatchIds] <- allBatchDat$y  - preds
+            } else {
+             normVal[allBatchIds] <- allBatchDat$y / preds
+            }
+          # if not enough data, write NAs
+          } else {
+            predVals[allBatchIds] <- NA
+            normVal[allBatchIds] <- NA
+          }          
         }
         if(keepScale){
           normVal <- normVal + mean(dat$y, na.rm = TRUE)
@@ -478,23 +476,22 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
                 }
               }
             }
-            
-            # if enough data
-            if(!not.enough.data){
-              preds <- predict(tGAM, newdata = allBatchDat)
-              predVals[allBatchIds] <- preds
-              
-              if(keepScale){
-                normVal[allBatchIds] <- allBatchDat$y  - preds
-              } else {
-                normVal[allBatchIds] <- allBatchDat$y / preds
-              }
-            # if not enough data
-            } else {
-              normVal[allBatchIds] <- NA
-              predVals[allBatchIds] <- NA
-            }
           }
+          # if enough data
+          if(!not.enough.data){
+            preds <- predict(tGAM, newdata = allBatchDat)
+            predVals[allBatchIds] <- preds
+              
+            if(keepScale){
+              normVal[allBatchIds] <- allBatchDat$y  - preds
+            } else {
+              normVal[allBatchIds] <- allBatchDat$y / preds
+            }
+          # if not enough data
+          } else {
+            normVal[allBatchIds] <- NA
+            predVals[allBatchIds] <- NA
+          }                         
         }
         if(keepScale){
           normVal <- normVal + mean(dat$y, na.rm = TRUE)
