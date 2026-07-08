@@ -174,11 +174,11 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           # remember: batchDat has no missing values, as only complete cases
           #   are retained
           # also, k.batch should be in proportion to the number of observations
-          #   heuristic, not more than half the number of observations, to 
+          #   heuristic, not more than 1/4 the number of observations, to 
           #   prevent overfitting
           k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
           if(k.batch > k) k.batch <- k
-          if(k.batch > nrow(batchDat)/4) k.batch <- nrow(batchDat)/4
+          if(k.batch > nrow(batchDat)/4) k.batch <- round(nrow(batchDat)/4)
           
           # 0-3 non-missing observations in batch: nothing useful, return NAs 
           if(k.batch < 1){
@@ -387,11 +387,11 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
       
       # fit per batch
       if(batchwise){
-        # reset not.enough.data flag
-        not.enough.data <- FALSE
-        
         normVal <- numeric(length(dat$y))
         for(batchid in 1:length(levels(dat$batch))){
+          # reset not.enough.data flag
+          not.enough.data <- FALSE
+          
           # fit the model on fitting data only (depends on QCOnly, see above)
           batchIds <- which(datfit$batch == levels(datfit$batch)[batchid])
           batchDat <- datfit[batchIds, ]
@@ -405,11 +405,11 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
           # remember: batchDat has no missing values, as only complete cases
           #   are retained
           # also, k.batch should be in proportion to the number of observations
-          #   heuristic, not more than half the number of observations, to 
+          #   heuristic, not more than 1/4 the number of observations, to 
           #   prevent overfitting
           k.batch <- length(batchDat$y[batchDat$weight != 0]) - 3
           if(k.batch > k) k.batch <- k
-          if(k.batch > nrow(batchDat)/4) k.batch <- nrow(batchDat)/4
+          if(k.batch > nrow(batchDat)/4) k.batch <- round(nrow(batchDat)/4)
           
           # 0-3 non-missing observations in batch: nothing useful, return NAs 
           if(k.batch < 1){
