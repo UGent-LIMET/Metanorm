@@ -737,6 +737,11 @@ metanormWorker <- function(raw, order, keepScale, QConly, QCcheck, QCcheckp,
   if(!is.null(plotdir)){
 
     batchlabels <- seq(length(levels(dat$batch)))
+    # with more than 25 batches, restart from 1 (not enough symbols)
+    #  and add 1, just in case there are multiples of 25 batches (otherwise 
+    #  returns 0)
+    batchlabels <- batchlabels %% 25 + 1 
+    
     if(plottype == "pdf"){
       dat$pred <- predVals
       preNorm <- ggplot(dat, aes(x = .data$x,
